@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="BitcoinNet">
+      <HintPath>..\..\..\git\Lokad\BitcoinNet\BitcoinNet\bin\Release\netcoreapp2.1\BitcoinNet.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
