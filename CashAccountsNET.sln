@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CashAccounts.Client", "Cash
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CashAccounts", "CashAccounts\CashAccounts.csproj", "{F7B9881B-CCE7-4CD4-980C-C016AF1206D8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CashAccounts.Demo", "CashAccounts.Demo\CashAccounts.Demo.csproj", "{05C99436-F635-4AE8-ABCF-13E667AD1107}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{F7B9881B-CCE7-4CD4-980C-C016AF1206D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F7B9881B-CCE7-4CD4-980C-C016AF1206D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F7B9881B-CCE7-4CD4-980C-C016AF1206D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05C99436-F635-4AE8-ABCF-13E667AD1107}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05C99436-F635-4AE8-ABCF-13E667AD1107}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05C99436-F635-4AE8-ABCF-13E667AD1107}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05C99436-F635-4AE8-ABCF-13E667AD1107}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

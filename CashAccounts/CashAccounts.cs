@@ -11,13 +11,13 @@ namespace CashAccountsNET
 {
     public abstract class CashAccounts
     {
-        #region Blockchain Constants
+        #region Blockchain Constants (Specific to Cash Accounts)
         public const int BLOCK_MODIFICATION = 563620;
         public const int ACTIVATION_HEIGHT = 563720;
         public const string ACTIVATION_BLOCKHASH = "000000000000000002abbeff5f6fb22a0b3b5c2685c6ef4ed2d2257ed54e9dcb";
         #endregion
 
-        #region Transaction Constants
+        #region Transaction Constants (Specific to Cash Accounts)
         public static readonly byte[] PROTOCOL_PREFIX = { 0x01, 0x01, 0x01, 0x01 };
         public static readonly int[] VALID_PAYMENT_LENGTHS = { 21, 67, 81 };
         public static readonly Regex PROTOCOL_RX = new Regex(@"^[a-zA-Z0-9_]{1,99}$", RegexOptions.Compiled);
@@ -29,9 +29,128 @@ namespace CashAccountsNET
                 128214, 9993, 128230, 9999, 128188, 128203, 9986, 128273, 128274, 128296, 128295, 9878, 9775, 128681, 128099, 127838 };
         #endregion
 
-        #region Utils
-        public static readonly Base58CheckEncoder base58CheckEncoder = new Base58CheckEncoder();
-        public static readonly HexEncoder hexEncoder = new HexEncoder();
+        #region Utils (Address manipulation, encoders etc...)
+        internal static readonly Base58CheckEncoder base58CheckEncoder = new Base58CheckEncoder();
+        internal static readonly HexEncoder hexEncoder = new HexEncoder();
+
+        internal const string cashAddrCharSet = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+
+        internal const byte p2pkhCashAddrByte = 0x00; // 160-bit hash
+        internal const byte p2shCashAddrByte = 0x08; // 160-bit hash
+
+        // Values calculated @ https://play.golang.org/p/o4-mMftR44D (uses PolyMod method)
+        internal const ulong bitcoincashPolyModValue = 1058337025301;
+        internal const ulong simpleledgerPolyModValue = 982016419000;
+
+        internal static string EncodeCashAddress(byte[] payloadWithVersionByte, ulong polyModValue)
+        {
+            byte[] cashAddrBase5 = ConvertBits(payloadWithVersionByte, 8, 5);
+            cashAddrBase5 = cashAddrBase5.Concat(new byte[8]);
+
+            ulong mod = PolyMod(cashAddrBase5, polyModValue);
+            for (int i = 0; i < 8; i++)
+            {
+                cashAddrBase5[i + 34] = (byte)((mod >> (5 * (7 - i))) & 0x1f);
+            }
+
+            var prefix = "";
+            if (polyModValue == bitcoincashPolyModValue)
+                prefix = "bitcoincash:";
+            else if (polyModValue == simpleledgerPolyModValue)
+                prefix = "simpleledger:";
+
+            var cashAddr = new StringBuilder(prefix);
+            for (int i = 0; i < cashAddrBase5.Length; i++)
+            {
+                cashAddr.Append(cashAddrCharSet[cashAddrBase5[i]]);
+            }
+            return cashAddr.ToString();
+        }
+
+        internal static byte[] DecodeCashAddress(string address) // Courtesy ProtocolCash @ https://github.com/ProtocolCash/SharpBCH/blob/master/SharpBCH/CashAddress/CashAddress.cs
+        {
+            // split at separator colon, ensure lowercase
+            var addressPieces = address.ToLower().Split(':');
+            // prefix string
+            var prefixStr = addressPieces[0];
+            // payload string (hash + checksum)
+            var payloadStr = addressPieces[1];
+            // payload (hash + checksum) as byte array
+            var payload = new byte[payloadStr.Length];
+            for (int i = 0; i < payload.Length; i++) // decode bech32 encoded payload string
+            {
+                payload[i] = (byte)cashAddrCharSet.IndexOf(payloadStr[i]);
+            }
+            // Drop the checksum from the payload to extract hash (+ version byte)
+            var data = payload.Take(payload.Length - 8).ToArray();
+            // convert to standard 8-bit from 5-bit
+            data = ConvertBits(data, 5, 8, true);
+            // cashAddr version byte
+            var versionByte = data[0];
+            // pubkey hash or script hash
+            var hash = data.Skip(1).ToArray();
+            return hash;
+        }
+
+        internal static ulong PolyMod(byte[] input, ulong startValue = 1)
+        {
+            for (uint i = 0; i < input.Length; i++)
+            {
+                ulong c0 = startValue >> 35;
+                startValue = ((startValue & 0x07ffffffff) << 5) ^ ((ulong)input[i]);
+                if ((c0 & 0x01) > 0)
+                {
+                    startValue ^= 0x98f2bc8e61;
+                }
+                if ((c0 & 0x02) > 0)
+                {
+                    startValue ^= 0x79b76d99e2;
+                }
+                if ((c0 & 0x04) > 0)
+                {
+                    startValue ^= 0xf33e5fb3c4;
+                }
+                if ((c0 & 0x08) > 0)
+                {
+                    startValue ^= 0xae2eabe2a8;
+                }
+                if ((c0 & 0x10) > 0)
+                {
+                    startValue ^= 0x1e4f43e470;
+                }
+            }
+            return startValue ^ 1;
+        }
+
+        internal static byte[] ConvertBits(byte[] data, int from, int to, bool strictMode = false) // Courtesy ProtocolCash @ https://github.com/ProtocolCash/SharpBCH/blob/master/SharpBCH/CashAddress/CashAddress.cs
+        {
+            var d = data.Length * from / (double)to;
+            var length = strictMode ? (int)Math.Floor(d) : (int)Math.Ceiling(d);
+            var mask = (1 << to) - 1;
+            var result = new byte[length];
+            var index = 0;
+            var accumulator = 0;
+            var bits = 0;
+            foreach (var value in data)
+            {
+                accumulator = (accumulator << from) | value;
+                bits += from;
+                while (bits >= to)
+                {
+                    bits -= to;
+                    result[index] = (byte)((accumulator >> bits) & mask);
+                    ++index;
+                }
+            }
+
+            if (strictMode) return result;
+            if (bits <= 0) return result;
+
+            result[index] = (byte)((accumulator << (to - bits)) & mask);
+            ++index;
+
+            return result;
+        }
         #endregion
 
         internal static List<PaymentData> ProcessPaymentData(Transaction tx)
@@ -39,7 +158,7 @@ namespace CashAccountsNET
             List<byte[]> rawPaymentDataList = new List<byte[]>();
             foreach (var output in tx.Outputs)
             {
-                var ops = output.ScriptPubKey.ToOps().ToArray(); // Break-up raw output into easily manipulable IEnumerable<Op>
+                var ops = output.ScriptPubKey.ToOps().ToArray(); // Present raw output as and array of Ops
                 if (ops.ElementAt(0).Code == OpcodeType.OP_RETURN && ops.ElementAt(1).PushData.SequenceEqual(PROTOCOL_PREFIX)) // check if output adheres to the protocol specification. ignores non-OP_RETURN outputs
                 {
                     bool isExhausted = false;
@@ -63,11 +182,11 @@ namespace CashAccountsNET
 
             foreach (var rawPaymentBytes in rawPaymentDataList)
             {
-                switch (rawPaymentBytes.First())
+                var bytesList = rawPaymentBytes.ToList(); // easier to work with a list :)
+                switch (rawPaymentBytes.First()) // parse raw payment data based on what payment type is specified in registration
                 {
                     case (byte)PaymentType.KeyHash:
                         {
-                            var bytesList = rawPaymentBytes.ToList();
                             bytesList.RemoveAt(0);
                             var keyHash = new KeyId(bytesList.ToArray());
                             var address = keyHash.GetAddress(Network.Main);
@@ -81,7 +200,6 @@ namespace CashAccountsNET
                         }
                     case (byte)PaymentType.ScriptHash:
                         {
-                            var bytesList = rawPaymentBytes.ToList();
                             bytesList.RemoveAt(0);
                             var scriptHash = new ScriptId(bytesList.ToArray());
                             var address = scriptHash.GetAddress(Network.Main);
@@ -95,7 +213,6 @@ namespace CashAccountsNET
                         }
                     case (byte)PaymentType.PaymentCode:
                         {
-                            var bytesList = rawPaymentBytes.ToList();
                             bytesList.RemoveAt(0);
                             bytesList.Insert(0, 0x47);
                             var address = base58CheckEncoder.EncodeData(bytesList.ToArray());
@@ -115,14 +232,28 @@ namespace CashAccountsNET
                         }
                     case (byte)PaymentType.TokenKeyHash:
                         {
-                            throw new NotImplementedException();
-                            // TODO
+                            bytesList.RemoveAt(0);
+                            bytesList.Insert(0, p2pkhCashAddrByte);
+                            var address = EncodeCashAddress(bytesList.ToArray(), simpleledgerPolyModValue);
+                            var paymentData = new PaymentData()
+                            {
+                                Type = PaymentType.TokenKeyHash,
+                                Address = address
+                            };
+                            paymentDataList.Add(paymentData);
                             break;
                         }
                     case (byte)PaymentType.TokenScriptHash:
                         {
-                            throw new NotImplementedException();
-                            // TODO
+                            bytesList.RemoveAt(0);
+                            bytesList.Insert(0, p2shCashAddrByte);
+                            var address = EncodeCashAddress(bytesList.ToArray(), simpleledgerPolyModValue);
+                            var paymentData = new PaymentData()
+                            {
+                                Type = PaymentType.TokenScriptHash,
+                                Address = address
+                            };
+                            paymentDataList.Add(paymentData);
                             break;
                         }
                     case (byte)PaymentType.TokenPaymentCode:

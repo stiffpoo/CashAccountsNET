@@ -78,12 +78,22 @@ namespace CashAccountsNET
                         // TODO
                         break;
                     case PaymentType.TokenKeyHash:
-                        throw new NotImplementedException();
-                        // TODO
+                        {
+                            var payload = new byte[] { (byte)payment.Type }.Concat(CashAccounts.DecodeCashAddress(payment.Address)).ToArray();
+                            if (CashAccounts.VALID_PAYMENT_LENGTHS.Contains(payload.Length))
+                                payloads.Add(payload);
+                            else
+                                throw new ArgumentOutOfRangeException("Address", "Address was out of Range!");
+                        }
                         break;
                     case PaymentType.TokenScriptHash:
-                        throw new NotImplementedException();
-                        // TODO
+                        {
+                            var payload = new byte[] { (byte)payment.Type }.Concat(CashAccounts.DecodeCashAddress(payment.Address)).ToArray();
+                            if (CashAccounts.VALID_PAYMENT_LENGTHS.Contains(payload.Length))
+                                payloads.Add(payload);
+                            else
+                                throw new ArgumentOutOfRangeException("Address", "Address was out of Range!");
+                        }
                         break;
                     case PaymentType.TokenPaymentCode:
                         throw new NotImplementedException();
