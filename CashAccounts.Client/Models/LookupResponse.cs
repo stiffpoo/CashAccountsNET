@@ -6,7 +6,7 @@ namespace CashAccountsNET.Client
 {
     public class LookupResponse
     {
-        public string RawTransactionString { get; set; }
-        public string InclusionProofString { get; set; }
+        public string RawTransactionString { get; internal set; }
+        public string InclusionProofString { get; internal set; }
     }
 }

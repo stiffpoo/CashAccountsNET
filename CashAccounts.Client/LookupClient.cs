@@ -5,25 +5,25 @@ using RestSharp;
 
 namespace CashAccountsNET.Client
 {
-    public class LookupClient
+    public class AccountClient
     {
-        public Uri LookupServer { get; set; }
+        public Uri ApiServer { get; set; }
         private RestClient RestClient { get; set; }
 
-        public readonly string[] LOOKUP_SERVERS = 
+        public readonly string[] API_SERVERS = 
             { "http://api.cashaccount.info:8585/", "https://calus.stiffp.ooo/api/", "https://cashacct.imaginary.cash/" };
 
-        public LookupClient(Uri lookupServer = null)
+        public AccountClient(Uri apiServer = null)
         {
-            if (lookupServer == null)
+            if (apiServer == null)
             {
                 Random random = new Random();
-                int r = random.Next(0, LOOKUP_SERVERS.Length - 1);
-                this.LookupServer = new Uri(LOOKUP_SERVERS[r]);
+                int r = random.Next(0, API_SERVERS.Length - 1);
+                this.ApiServer = new Uri(API_SERVERS[r]);
             }
             else
-                this.LookupServer = lookupServer;
-            this.RestClient = new RestClient(this.LookupServer);
+                this.ApiServer = apiServer;
+            this.RestClient = new RestClient(this.ApiServer);
         }
 
         public LookupResponse[] GetLookupResponses(string name, int number)
