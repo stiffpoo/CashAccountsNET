@@ -52,9 +52,9 @@ namespace CashAccountsNET
                 return _emoji;
             }
         }
-        public List<PaymentData> PaymentData { get; set; }
-        public string Txid { get; set; }
-        public string RawTxHex { get; set; }
+        public List<PaymentData> PaymentData { get; private set; }
+        public string Txid { get; private set; }
+        public string RawTxHex { get; private set; }
         private int _blockHeight;
         public int BlockHeight
         {
@@ -64,18 +64,18 @@ namespace CashAccountsNET
                 if (value >= CashAccounts.ACTIVATION_HEIGHT)
                     _blockHeight = value;
                 else
-                    throw new ArgumentOutOfRangeException("Block Height", "Block Height must be equal to or greater than 563720 (Protocol Activation Height)");
+                    throw new ArgumentOutOfRangeException("Block Height", "Block Height can not be less than than 563720 (Protocol Activation Height)");
             }
         }
-        public string BlockHash { get; set; }
-        public string InclusionProof { get; set; }
+        public string BlockHash { get; private set; }
+        public string InclusionProof { get; private set; }
 
         private Account()
         {
 
         }
 
-        public static Account Parse(string rawTxHex, int blockHeight, string blockHash)
+        public static Account Parse(string rawTxHex, string inclusionProof, int blockHeight, string blockHash)
         {
             var registrationTx = Transaction.Parse(rawTxHex, Network.Main);
             var account = new Account()
@@ -83,6 +83,7 @@ namespace CashAccountsNET
                 Name = CashAccounts.ParseAccountName(registrationTx),
                 PaymentData = CashAccounts.ProcessPaymentData(registrationTx),
                 Txid = registrationTx.GetHash().ToString(),
+                InclusionProof = inclusionProof,
                 RawTxHex = rawTxHex,
                 BlockHeight = blockHeight,
                 BlockHash = blockHash

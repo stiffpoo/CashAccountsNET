@@ -35,8 +35,8 @@ namespace CashAccountsNET
 
         internal const string cashAddrCharSet = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
 
-        internal const byte p2pkhCashAddrByte = 0x00; // 160-bit hash
-        internal const byte p2shCashAddrByte = 0x08; // 160-bit hash
+        internal const byte p2pkhCashAddrByte = 0b_0_0000_000; // 160-bit hash
+        internal const byte p2shCashAddrByte = 0b_0_0001_000; // 160-bit hash
 
         // Values calculated @ https://play.golang.org/p/o4-mMftR44D (uses PolyMod method)
         internal const ulong bitcoincashPolyModValue = 1058337025301;
@@ -92,12 +92,38 @@ namespace CashAccountsNET
             return hash;
         }
 
-        internal static ulong PolyMod(byte[] input, ulong startValue = 1)
+        internal static bool ValidateBech32Checksum(string address)
+        {
+            var pieces = address.ToLower().Split(':');
+            var prefix = pieces[0];
+            var payload = new byte[pieces[1].Length];
+            for (int i = 0; i < payload.Length; i++) // decode bech32 encoded payload string
+            {
+                payload[i] = (byte)cashAddrCharSet.IndexOf(pieces[1][i]);
+            }
+            var prefixPayload = MapPrefixToPolymodInput(prefix);
+            var startValue = PolyMod(prefixPayload, 1, true);
+            return PolyMod(payload, startValue) == 0;
+        }
+
+        internal static byte[] MapPrefixToPolymodInput(string prefix)
+        {
+            var alphabet = "abcdefghijklmnopqrstuvwxyz";
+            var input = new byte[prefix.Length + 1];
+            for (int i = 0; i < prefix.Length; i++)
+            {
+                input[i] = (byte)(alphabet.IndexOf(prefix[i]) + 1);
+            }
+            input[prefix.Length] = 0x00; // 0 byte for ':' separator
+            return input;
+        }
+
+        internal static ulong PolyMod(byte[] input, ulong startValue = 1, bool getStartValue = false)
         {
             for (uint i = 0; i < input.Length; i++)
             {
                 ulong c0 = startValue >> 35;
-                startValue = ((startValue & 0x07ffffffff) << 5) ^ ((ulong)input[i]);
+                startValue = ((startValue & 0x07ffffffff) << 5) ^ input[i];
                 if ((c0 & 0x01) > 0)
                 {
                     startValue ^= 0x98f2bc8e61;
@@ -119,7 +145,7 @@ namespace CashAccountsNET
                     startValue ^= 0x1e4f43e470;
                 }
             }
-            return startValue ^ 1;
+            return getStartValue ? startValue : startValue ^ 1;
         }
 
         internal static byte[] ConvertBits(byte[] data, int from, int to, bool strictMode = false) // Courtesy ProtocolCash @ https://github.com/ProtocolCash/SharpBCH/blob/master/SharpBCH/CashAddress/CashAddress.cs
@@ -189,12 +215,8 @@ namespace CashAccountsNET
                         {
                             bytesList.RemoveAt(0);
                             var keyHash = new KeyId(bytesList.ToArray());
-                            var address = keyHash.GetAddress(Network.Main);
-                            var paymentData = new PaymentData()
-                            {
-                                Type = PaymentType.KeyHash,
-                                Address = address.ToString()
-                            };
+                            var bAddress = keyHash.GetAddress(Network.Main);
+                            var paymentData = new PaymentData(bAddress.ToString());
                             paymentDataList.Add(paymentData);
                             break;
                         }
@@ -202,12 +224,8 @@ namespace CashAccountsNET
                         {
                             bytesList.RemoveAt(0);
                             var scriptHash = new ScriptId(bytesList.ToArray());
-                            var address = scriptHash.GetAddress(Network.Main);
-                            var paymentData = new PaymentData()
-                            {
-                                Type = PaymentType.ScriptHash,
-                                Address = address.ToString()
-                            };
+                            var bAddress = scriptHash.GetAddress(Network.Main);
+                            var paymentData = new PaymentData(bAddress.ToString());
                             paymentDataList.Add(paymentData);
                             break;
                         }
@@ -216,11 +234,7 @@ namespace CashAccountsNET
                             bytesList.RemoveAt(0);
                             bytesList.Insert(0, 0x47);
                             var address = base58CheckEncoder.EncodeData(bytesList.ToArray());
-                            var paymentData = new PaymentData()
-                            {
-                                Type = PaymentType.PaymentCode,
-                                Address = address
-                            };
+                            var paymentData = new PaymentData(address);
                             paymentDataList.Add(paymentData);
                             break;
                         }
@@ -230,39 +244,31 @@ namespace CashAccountsNET
                             // TODO
                             break;
                         }
-                    case (byte)PaymentType.TokenKeyHash:
+                    case (byte)PaymentType.SlpKeyHash:
                         {
                             bytesList.RemoveAt(0);
                             bytesList.Insert(0, p2pkhCashAddrByte);
                             var address = EncodeCashAddress(bytesList.ToArray(), simpleledgerPolyModValue);
-                            var paymentData = new PaymentData()
-                            {
-                                Type = PaymentType.TokenKeyHash,
-                                Address = address
-                            };
+                            var paymentData = new PaymentData(address);
                             paymentDataList.Add(paymentData);
                             break;
                         }
-                    case (byte)PaymentType.TokenScriptHash:
+                    case (byte)PaymentType.SlpScriptHash:
                         {
                             bytesList.RemoveAt(0);
                             bytesList.Insert(0, p2shCashAddrByte);
                             var address = EncodeCashAddress(bytesList.ToArray(), simpleledgerPolyModValue);
-                            var paymentData = new PaymentData()
-                            {
-                                Type = PaymentType.TokenScriptHash,
-                                Address = address
-                            };
+                            var paymentData = new PaymentData(address);
                             paymentDataList.Add(paymentData);
                             break;
                         }
-                    case (byte)PaymentType.TokenPaymentCode:
+                    case (byte)PaymentType.SlpPaymentCode:
                         {
                             throw new NotImplementedException();
                             // TODO
                             break;
                         }
-                    case (byte)PaymentType.TokenStealthKey:
+                    case (byte)PaymentType.SlpStealthKey:
                         {
                             throw new NotImplementedException();
                             // TODO
@@ -278,12 +284,100 @@ namespace CashAccountsNET
             paymentDataTmpList.Where(p => p.Type == PaymentType.PaymentCode).ToList().ForEach(p => paymentDataList.Add(p));
             paymentDataTmpList.Where(p => p.Type == PaymentType.KeyHash).ToList().ForEach(p => paymentDataList.Add(p));
             paymentDataTmpList.Where(p => p.Type == PaymentType.ScriptHash).ToList().ForEach(p => paymentDataList.Add(p));
-            paymentDataTmpList.Where(p => p.Type == PaymentType.TokenStealthKey).ToList().ForEach(p => paymentDataList.Add(p));
-            paymentDataTmpList.Where(p => p.Type == PaymentType.TokenPaymentCode).ToList().ForEach(p => paymentDataList.Add(p));
-            paymentDataTmpList.Where(p => p.Type == PaymentType.TokenKeyHash).ToList().ForEach(p => paymentDataList.Add(p));
-            paymentDataTmpList.Where(p => p.Type == PaymentType.TokenScriptHash).ToList().ForEach(p => paymentDataList.Add(p));
+            paymentDataTmpList.Where(p => p.Type == PaymentType.SlpStealthKey).ToList().ForEach(p => paymentDataList.Add(p));
+            paymentDataTmpList.Where(p => p.Type == PaymentType.SlpPaymentCode).ToList().ForEach(p => paymentDataList.Add(p));
+            paymentDataTmpList.Where(p => p.Type == PaymentType.SlpKeyHash).ToList().ForEach(p => paymentDataList.Add(p));
+            paymentDataTmpList.Where(p => p.Type == PaymentType.SlpScriptHash).ToList().ForEach(p => paymentDataList.Add(p));
 
             return paymentDataList;
+        }
+
+        internal static Script GetRegistrationScript(string accountName, IEnumerable<PaymentData> paymentData)
+        {
+            var payloads = new List<byte[]>();
+            foreach (var payment in paymentData)
+            {
+                switch (payment.Type)
+                {
+                    case PaymentType.KeyHash:
+                        {
+                            var addr = BitcoinAddress.CreateFromAny(payment.Address, Network.Main);
+                            var payload = new byte[] { (byte)payment.Type }.Concat(addr.ScriptPubKey.GetDestination().ToBytes());
+                            if (VALID_PAYMENT_LENGTHS.Contains(payload.Length))
+                                payloads.Add(payload);
+                            else
+                                throw new ArgumentOutOfRangeException("Address", "Address was out of Range!");
+                        }
+                        break;
+                    case PaymentType.ScriptHash:
+                        {
+                            var addr = BitcoinAddress.CreateFromAny(payment.Address, Network.Main);
+                            var payload = new byte[] { (byte)payment.Type }.Concat(addr.ScriptPubKey.GetDestination().ToBytes());
+                            if (VALID_PAYMENT_LENGTHS.Contains(payload.Length))
+                                payloads.Add(payload);
+                            else
+                                throw new ArgumentOutOfRangeException("Address", "Address was out of Range!");
+                        }
+                        break;
+                    case PaymentType.PaymentCode:
+                        {
+                            var paymentCodePayload = base58CheckEncoder.DecodeData(payment.Address).ToList();
+                            paymentCodePayload.RemoveAt(0);
+                            var payload = new byte[] { (byte)payment.Type }.Concat(paymentCodePayload.ToArray());
+                            if (VALID_PAYMENT_LENGTHS.Contains(payload.Length))
+                                payloads.Add(payload);
+                            else
+                                throw new ArgumentOutOfRangeException("Address", "Payment Code was out of Range!");
+                        }
+                        break;
+                    case PaymentType.StealthKey:
+                        throw new NotImplementedException();
+                        // TODO
+                        break;
+                    case PaymentType.SlpKeyHash:
+                        {
+                            var payload = new byte[] { (byte)payment.Type }.Concat(DecodeCashAddress(payment.Address)).ToArray();
+                            if (VALID_PAYMENT_LENGTHS.Contains(payload.Length))
+                                payloads.Add(payload);
+                            else
+                                throw new ArgumentOutOfRangeException("Address", "Address was out of Range!");
+                        }
+                        break;
+                    case PaymentType.SlpScriptHash:
+                        {
+                            var payload = new byte[] { (byte)payment.Type }.Concat(DecodeCashAddress(payment.Address)).ToArray();
+                            if (VALID_PAYMENT_LENGTHS.Contains(payload.Length))
+                                payloads.Add(payload);
+                            else
+                                throw new ArgumentOutOfRangeException("Address", "Address was out of Range!");
+                        }
+                        break;
+                    case PaymentType.SlpPaymentCode:
+                        throw new NotImplementedException();
+                        // TODO
+                        break;
+                    case PaymentType.SlpStealthKey:
+                        throw new NotImplementedException();
+                        // TODO
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            var ops = new List<Op>
+            {
+                OpcodeType.OP_RETURN,
+                Op.GetPushOp(PROTOCOL_PREFIX),
+                Op.GetPushOp(Encoding.UTF8.GetBytes(accountName))
+            };
+
+            foreach (var payload in payloads)
+            {
+                ops.Add(Op.GetPushOp(payload));
+            }
+
+            return new Script(ops);
         }
 
         internal static string ParseAccountName(Transaction tx)

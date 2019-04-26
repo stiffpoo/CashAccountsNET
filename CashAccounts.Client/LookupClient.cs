@@ -11,7 +11,7 @@ namespace CashAccountsNET.Client
         private RestClient RestClient { get; set; }
 
         public readonly string[] LOOKUP_SERVERS = 
-            { "http://api.cashaccount.info:8585/", "https://calus.stiffp.ooo/api/", "http://89.163.204.53:8585/", "https://cashacct.imaginary.cash/", "http://lookup.cashaccounts.bigkesh.com/" };
+            { "http://api.cashaccount.info:8585/", "https://calus.stiffp.ooo/api/", "https://cashacct.imaginary.cash/" };
 
         public LookupClient(Uri lookupServer = null)
         {
