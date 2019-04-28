@@ -35,7 +35,7 @@ namespace CashAccountsNET
                     default:
                         throw new ArgumentOutOfRangeException("address", "Address prefix was not valid/recognised");
                 }
-                if (CashAccounts.ValidateBech32Checksum(address.ToLower()))
+                if (CashAccounts.ValidateCashAddress(address.ToLower()))
                     this.Address = address;
                 else
                     throw new ArgumentException("Address was not valid", "address");
@@ -43,15 +43,10 @@ namespace CashAccountsNET
             else if (address[0].Equals('P'))
             {
                 this.Type = PaymentType.PaymentCode;
-                try
-                {
-                    CashAccounts.base58CheckEncoder.DecodeData(address);
+                if (address.IndexOfAny(CashAccounts.BASE58_CHARSET.ToCharArray()) != -1 || address.Length != 81)
                     this.Address = address;
-                }
-                catch
-                {
-                    throw new ArgumentException("Address was not valid", "address");
-                }
+                else
+                    throw new ArgumentException("Payment Code was not valid", "address");
             }
         }
     }

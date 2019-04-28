@@ -10,7 +10,7 @@ namespace CashAccountsNET.Client
         public Uri ApiServer { get; set; }
         private RestClient RestClient { get; set; }
 
-        public readonly string[] API_SERVERS = 
+        public static readonly string[] API_SERVERS = 
             { "http://api.cashaccount.info:8585/", "https://calus.stiffp.ooo/api/", "https://cashacct.imaginary.cash/" };
 
         public AccountClient(Uri apiServer = null)
@@ -44,6 +44,28 @@ namespace CashAccountsNET.Client
 
             var response = await this.RestClient.ExecuteTaskAsync(request);
             return ParseLookupJSON(response.Content);
+        }
+
+        public AccountMetadata GetAccountMetadata(string name, int number, string hash = "")
+        {
+            var request = new RestRequest("account/{number}/{name}/{hash}", Method.GET);
+            request.AddUrlSegment("name", name);
+            request.AddUrlSegment("number", number);
+            request.AddUrlSegment("hash", hash);
+
+            var response = this.RestClient.Execute<AccountMetadata>(request);
+            return response.Data;
+        }
+
+        public async Task<AccountMetadata> GetAccountMetadataAsync(string name, int number, string hash = "")
+        {
+            var request = new RestRequest("account/{number}/{name}/{hash}", Method.GET);
+            request.AddUrlSegment("name", name);
+            request.AddUrlSegment("number", number);
+            request.AddUrlSegment("hash", hash);
+
+            var response = await this.RestClient.ExecuteTaskAsync<AccountMetadata>(request);
+            return response.Data;
         }
 
         private LookupResponse[] ParseLookupJSON(string json)

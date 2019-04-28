@@ -27,9 +27,9 @@ namespace CashAccountsNET
             {
                 if (_collisionId == null)
                 {
-                    if (this.BlockHash == null)
+                    if (string.IsNullOrEmpty(this.BlockHash))
                         throw new ArgumentNullException("Block Hash", "Can not calculate Collision ID without having defined a Block Hash");
-                    if (this.Txid == null)
+                    if (string.IsNullOrEmpty(this.Txid))
                         throw new ArgumentNullException("TXID", "Can not calculate Collision ID without having defined a TXID");
                     _collisionId = CashAccounts.CalculateCollisionId(this.BlockHash, this.Txid);
                 }
@@ -43,10 +43,10 @@ namespace CashAccountsNET
             {
                 if (_emoji == null)
                 {
-                    if (this.BlockHash == null)
-                        throw new ArgumentNullException("Block Hash", "Can not calculate Collision ID without having defined a Block Hash");
-                    if (this.Txid == null)
-                        throw new ArgumentNullException("TXID", "Can not calculate Collision ID without having defined a TXID");
+                    if (string.IsNullOrEmpty(this.BlockHash))
+                        throw new ArgumentNullException("BlockHash", "Can not calculate Collision ID without having defined a Block Hash");
+                    if (string.IsNullOrEmpty(this.Txid))
+                        throw new ArgumentNullException("Txid", "Can not calculate Collision ID without having defined a TXID");
                     _emoji = CashAccounts.CalculateEmoji(this.BlockHash, this.Txid);
                 }
                 return _emoji;

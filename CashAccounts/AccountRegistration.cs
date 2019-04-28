@@ -1,4 +1,5 @@
 ﻿using BitcoinNet;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,6 +29,22 @@ namespace CashAccountsNET
 
         }
 
+        public string ToJson()
+        {
+            var addresses = new string[this.PaymentData.Count];
+            for (int i = 0; i < addresses.Length; i++)
+            {
+                addresses[i] = this.PaymentData.ElementAt(i).Address;
+            }
+
+            var jsonObject = new JObject()
+            {
+                new JProperty("name", this.Name),
+                new JProperty("payments", new JArray(addresses))
+            };
+            return jsonObject.ToString();
+        }
+
         public static AccountRegistration Create(string accountName, IEnumerable<PaymentData> paymentData)
         {
             var registration = new AccountRegistration()
@@ -37,6 +54,7 @@ namespace CashAccountsNET
                 OutputScript = new Script()
             };
 
+            // really hacky way of ordering payment data, prioritising first bch over slp, then reusable addresses over static addresses
             paymentData.Where(p => p.Type == PaymentType.StealthKey).ToList().ForEach(p => registration.PaymentData.Add(p));
             paymentData.Where(p => p.Type == PaymentType.PaymentCode).ToList().ForEach(p => registration.PaymentData.Add(p));
             paymentData.Where(p => p.Type == PaymentType.KeyHash).ToList().ForEach(p => registration.PaymentData.Add(p));
