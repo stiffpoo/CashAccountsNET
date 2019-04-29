@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
 
@@ -10,7 +12,7 @@ namespace CashAccountsNET.Client
         public Uri ApiServer { get; set; }
         private RestClient RestClient { get; set; }
 
-        public static readonly string[] API_SERVERS = 
+        public static readonly string[] API_SERVERS =
             { "http://api.cashaccount.info:8585/", "https://calus.stiffp.ooo/api/", "https://cashacct.imaginary.cash/" };
 
         public AccountClient(Uri apiServer = null)
@@ -66,6 +68,64 @@ namespace CashAccountsNET.Client
 
             var response = await this.RestClient.ExecuteTaskAsync<AccountMetadata>(request);
             return response.Data;
+        }
+
+        public RegistrationResponse PostAccountRegistration(AccountRegistration registration)
+        {
+            if (!registration.PaymentData.Any())
+                throw new ArgumentException("Account Registration is not complete, no payment data present", "registration");
+            else if (string.IsNullOrEmpty(registration.Name))
+                throw new ArgumentException("Account Registration is not complete, no account name present", "registration");
+
+            var request = new RestRequest("register/", Method.POST);
+            request.AddJsonBody(registration.ToJson());
+
+            var response = this.RestClient.Execute(request);
+            var jResponse = JObject.Parse(response.Content);
+
+            if (response.IsSuccessful)
+            {
+                var registrationResponse = new RegistrationResponse()
+                {
+                    Txid = (string)jResponse["txid"],
+                    RawTxHex = (string)jResponse["hex"]
+                };
+                return registrationResponse;
+            }
+            else
+            {
+                var errorMessage = (string)jResponse["error"];
+                throw new Exception(errorMessage);
+            }
+        }
+
+        public async Task<RegistrationResponse> PostAccountRegistrationAsync(AccountRegistration registration)
+        {
+            if (!registration.PaymentData.Any())
+                throw new ArgumentException("Account Registration is not complete, no payment data present", "registration");
+            else if (string.IsNullOrEmpty(registration.Name))
+                throw new ArgumentException("Account Registration is not complete, no account name present", "registration");
+
+            var request = new RestRequest("register/", Method.POST);
+            request.AddJsonBody(registration.ToJson());
+
+            var response = await this.RestClient.ExecuteTaskAsync(request);
+            var jResponse = JObject.Parse(response.Content);
+
+            if (response.IsSuccessful)
+            {
+                var registrationResponse = new RegistrationResponse()
+                {
+                    Txid = (string)jResponse["txid"],
+                    RawTxHex = (string)jResponse["hex"]
+                };
+                return registrationResponse;
+            }
+            else
+            {
+                var errorMessage = (string)jResponse["error"];
+                throw new Exception(errorMessage);
+            }
         }
 
         private LookupResponse[] ParseLookupJSON(string json)
