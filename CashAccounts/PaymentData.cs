@@ -48,6 +48,8 @@ namespace CashAccountsNET
                 else
                     throw new ArgumentException("Payment Code was not valid", "address");
             }
+            else
+                throw new ArgumentException("Address was not valid", "address");
         }
     }
 

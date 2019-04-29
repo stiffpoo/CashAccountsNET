@@ -180,6 +180,7 @@ namespace CashAccountsNET
         }
         #endregion
 
+        #region CashAccounts Specific Methods
         internal static List<PaymentData> ProcessPaymentData(Transaction tx)
         {
             List<byte[]> rawPaymentDataList = new List<byte[]>();
@@ -442,5 +443,6 @@ namespace CashAccountsNET
             string emoji = char.ConvertFromUtf32(emojiCode);
             return emoji;
         }
+        #endregion
     }
 }
