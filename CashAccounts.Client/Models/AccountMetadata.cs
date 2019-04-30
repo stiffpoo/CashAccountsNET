@@ -2,12 +2,17 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace CashAccountsNET.Client
+namespace CashAccountsNET.Client.Models
 {
     public class AccountMetadata
     {
         public string Identifier { get; set; }
         public AccountInformation Information { get; set; }
+
+        internal AccountMetadata()
+        {
+
+        }
     }
 
     public class AccountInformation

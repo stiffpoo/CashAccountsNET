@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace CashAccountsNET.Client
+namespace CashAccountsNET.Client.Models
 {
     public class RegistrationResponse
     {

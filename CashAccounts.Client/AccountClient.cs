@@ -1,16 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using CashAccountsNET.Client.Models;
 using Newtonsoft.Json.Linq;
-using RestSharp;
 
 namespace CashAccountsNET.Client
 {
     public class AccountClient
     {
         public Uri ApiServer { get; set; }
-        private RestClient RestClient { get; set; }
+        public HttpClient HttpClient { get; private set; }
 
         public static readonly string[] API_SERVERS =
             { "http://api.cashaccount.info:8585/", "https://calus.stiffp.ooo/api/", "https://cashacct.imaginary.cash/" };
@@ -25,49 +27,79 @@ namespace CashAccountsNET.Client
             }
             else
                 this.ApiServer = apiServer;
-            this.RestClient = new RestClient(this.ApiServer);
+            this.HttpClient = new HttpClient();
         }
 
         public LookupResponse[] GetLookupResponses(string name, int number)
         {
-            var request = new RestRequest("lookup/{number}/{name}", Method.GET);
-            request.AddUrlSegment("name", name);
-            request.AddUrlSegment("number", number);
+            var requestUri = new Uri(this.ApiServer + string.Format("lookup/{0}/{1}", number, name));
 
-            var response = this.RestClient.Execute(request);
-            return ParseLookupJSON(response.Content);
+            var httpResponse = this.HttpClient.GetAsync(requestUri).Result;
+            var jsonResponse = httpResponse.Content.ReadAsStringAsync().Result;
+
+            if (httpResponse.IsSuccessStatusCode)
+            {
+                return ParseLookupJson(jsonResponse);
+            }
+            else
+            {
+                var errorMessage = ParseErrorMessage(jsonResponse);
+                throw new HttpRequestException(errorMessage);
+            }
         }
 
         public async Task<LookupResponse[]> GetLookupResponsesAsync(string name, int number)
         {
-            var request = new RestRequest("lookup/{number}/{name}", Method.GET);
-            request.AddUrlSegment("name", name);
-            request.AddUrlSegment("number", number);
+            var requestUri = new Uri(this.ApiServer + string.Format("lookup/{0}/{1}", number, name));
 
-            var response = await this.RestClient.ExecuteTaskAsync(request);
-            return ParseLookupJSON(response.Content);
+            var httpResponse = await this.HttpClient.GetAsync(requestUri);
+            var jsonResponse = await httpResponse.Content.ReadAsStringAsync();
+
+            if (httpResponse.IsSuccessStatusCode)
+            {
+                return ParseLookupJson(jsonResponse);
+            }
+            else
+            {
+                var errorMessage = ParseErrorMessage(jsonResponse);
+                throw new HttpRequestException(errorMessage);
+            }
         }
 
         public AccountMetadata GetAccountMetadata(string name, int number, string hash = "")
         {
-            var request = new RestRequest("account/{number}/{name}/{hash}", Method.GET);
-            request.AddUrlSegment("name", name);
-            request.AddUrlSegment("number", number);
-            request.AddUrlSegment("hash", hash);
+            var requestUri = new Uri(this.ApiServer + string.Format("account/{0}/{1}/{2}", number, name, hash));
 
-            var response = this.RestClient.Execute<AccountMetadata>(request);
-            return response.Data;
+            var httpResponse = this.HttpClient.GetAsync(requestUri).Result;
+            var jsonResponse = httpResponse.Content.ReadAsStringAsync().Result;
+
+            if (httpResponse.IsSuccessStatusCode)
+            {
+                return ParseMetadataJson(jsonResponse);
+            }
+            else
+            {
+                var errorMessage = ParseErrorMessage(jsonResponse);
+                throw new HttpRequestException(errorMessage);
+            }
         }
 
         public async Task<AccountMetadata> GetAccountMetadataAsync(string name, int number, string hash = "")
         {
-            var request = new RestRequest("account/{number}/{name}/{hash}", Method.GET);
-            request.AddUrlSegment("name", name);
-            request.AddUrlSegment("number", number);
-            request.AddUrlSegment("hash", hash);
+            var requestUri = new Uri(this.ApiServer + string.Format("account/{0}/{1}/{2}", number, name, hash));
 
-            var response = await this.RestClient.ExecuteTaskAsync<AccountMetadata>(request);
-            return response.Data;
+            var httpResponse = await this.HttpClient.GetAsync(requestUri);
+            var jsonResponse = await httpResponse.Content.ReadAsStringAsync();
+
+            if (httpResponse.IsSuccessStatusCode)
+            {
+                return ParseMetadataJson(jsonResponse);
+            }
+            else
+            {
+                var errorMessage = ParseErrorMessage(jsonResponse);
+                throw new HttpRequestException(errorMessage);
+            }
         }
 
         public RegistrationResponse PostAccountRegistration(AccountRegistration registration)
@@ -77,38 +109,22 @@ namespace CashAccountsNET.Client
             else if (string.IsNullOrEmpty(registration.Name))
                 throw new ArgumentException("Account Registration is not complete, no account name present", "registration");
 
-            var request = new RestRequest("register/", Method.POST);
+            var requestUri = new Uri(this.ApiServer + "register/");
 
-            var addresses = new string[registration.PaymentData.Count];
-            for (int i = 0; i < addresses.Length; i++)
+            var jsonRequestString = AccountRegistrationToJson(registration);
+            var jsonContent = new StringContent(jsonRequestString, Encoding.UTF8, "application/json");
+
+            var httpResponse = this.HttpClient.PostAsync(requestUri, jsonContent).Result;
+            var jsonResponse = httpResponse.Content.ReadAsStringAsync().Result;
+
+            if (httpResponse.IsSuccessStatusCode)
             {
-                addresses[i] = registration.PaymentData.ElementAt(i).Address;
-            }
-
-            var registrationRequest = new JObject()
-            {
-                new JProperty("name", registration.Name),
-                new JProperty("payments", new JArray(addresses))
-            };
-
-            request.AddJsonBody(registrationRequest.ToString());
-
-            var response = this.RestClient.Execute(request);
-            var jResponse = JObject.Parse(response.Content);
-
-            if (response.IsSuccessful)
-            {
-                var registrationResponse = new RegistrationResponse()
-                {
-                    Txid = (string)jResponse["txid"],
-                    RawTxHex = (string)jResponse["hex"]
-                };
-                return registrationResponse;
+                return ParseRegoResponse(jsonResponse);
             }
             else
             {
-                var errorMessage = (string)jResponse["error"];
-                throw new Exception(errorMessage);
+                var errorMessage = ParseErrorMessage(jsonResponse);
+                throw new HttpRequestException(errorMessage);
             }
         }
 
@@ -119,55 +135,107 @@ namespace CashAccountsNET.Client
             else if (string.IsNullOrEmpty(registration.Name))
                 throw new ArgumentException("Account Registration is not complete, no account name present", "registration");
 
-            var request = new RestRequest("register/", Method.POST);
+            var requestUri = new Uri(this.ApiServer + "register/");
 
+            var jsonRequestString = AccountRegistrationToJson(registration);
+            var jsonContent = new StringContent(jsonRequestString, Encoding.UTF8, "application/json");
+
+            var httpResponse = await this.HttpClient.PostAsync(requestUri, jsonContent);
+            var jsonResponse = await httpResponse.Content.ReadAsStringAsync();
+
+            if (httpResponse.IsSuccessStatusCode)
+            {
+                return ParseRegoResponse(jsonResponse);
+            }
+            else
+            {
+                var errorMessage = ParseErrorMessage(jsonResponse);
+                throw new HttpRequestException(errorMessage);
+            }
+        }
+
+        private string ParseErrorMessage(string json)
+        {
+            var jError = JObject.Parse(json);
+            return (string)jError["error"];
+        }
+
+        private LookupResponse[] ParseLookupJson(string json)
+        {
+            var jLookup = JObject.Parse(json);
+            var jLookups = (JArray)jLookup["results"];
+            var lookups = new LookupResponse[jLookups.Count];
+            for (int i = 0; i < lookups.Length; i++)
+            {
+                lookups[i] = new LookupResponse
+                {
+                    RawTransactionString = ((string)jLookups[i]["transaction"]).ToLower(),
+                    InclusionProofString = ((string)jLookups[i]["inclusion_proof"]).ToLower()
+                };
+            }
+            return lookups;
+        }
+
+        private AccountMetadata ParseMetadataJson(string json)
+        {
+            var jMetadata = JObject.Parse(json);
+            var jPaymentInformation = (JArray)jMetadata["information"]["payment"];
+            var metadata = new AccountMetadata()
+            {
+                Identifier = (string)jMetadata["identifier"],
+                Information = new AccountInformation()
+                {
+                    Emoji = (string)jMetadata["information"]["emoji"],
+                    Name = (string)jMetadata["information"]["name"],
+                    Number = (int)jMetadata["information"]["number"],
+                    Collision = new CollisionInformation()
+                    {
+                        Hash = (string)jMetadata["information"]["collision"]["hash"],
+                        Count = (int)jMetadata["information"]["collision"]["count"],
+                        Length = (int)jMetadata["information"]["collision"]["length"],
+                    },
+                    Payment = new List<PaymentInformation>()
+                }
+            };
+            for (int i = 0; i < jPaymentInformation.Count; i++)
+            {
+                var paymentInformation = new PaymentInformation()
+                {
+                    Type = (string)jPaymentInformation[i]["type"],
+                    Address = (string)jPaymentInformation[i]["address"]
+                };
+                metadata.Information.Payment.Add(paymentInformation);
+            }
+
+            return metadata;
+        }
+
+        private RegistrationResponse ParseRegoResponse(string json)
+        {
+            var jResponse = JObject.Parse(json);
+            var regoResponse = new RegistrationResponse()
+            {
+                Txid = (string)jResponse["txid"],
+                RawTxHex = (string)jResponse["hex"]
+            };
+            return regoResponse;
+        }
+
+        private string AccountRegistrationToJson(AccountRegistration registration)
+        {
             var addresses = new string[registration.PaymentData.Count];
             for (int i = 0; i < addresses.Length; i++)
             {
                 addresses[i] = registration.PaymentData.ElementAt(i).Address;
             }
 
-            var registrationRequest = new JObject()
+            var jObject = new JObject()
             {
                 new JProperty("name", registration.Name),
                 new JProperty("payments", new JArray(addresses))
             };
 
-            request.AddJsonBody(registrationRequest.ToString());
-
-            var response = await this.RestClient.ExecuteTaskAsync(request);
-            var jResponse = JObject.Parse(response.Content);
-
-            if (response.IsSuccessful)
-            {
-                var registrationResponse = new RegistrationResponse()
-                {
-                    Txid = (string)jResponse["txid"],
-                    RawTxHex = (string)jResponse["hex"]
-                };
-                return registrationResponse;
-            }
-            else
-            {
-                var errorMessage = (string)jResponse["error"];
-                throw new Exception(errorMessage);
-            }
-        }
-
-        private LookupResponse[] ParseLookupJSON(string json)
-        {
-            JObject jLookupResponse = JObject.Parse(json);
-            JArray jLookupResponses = (JArray)jLookupResponse["results"];
-            var lookupResponses = new LookupResponse[jLookupResponses.Count];
-            for (int i = 0; i < lookupResponses.Length; i++)
-            {
-                lookupResponses[i] = new LookupResponse
-                {
-                    RawTransactionString = (string)jLookupResponses[i]["transaction"],
-                    InclusionProofString = (string)jLookupResponses[i]["inclusion_proof"]
-                };
-            }
-            return lookupResponses;
+            return jObject.ToString();
         }
     }
 }
