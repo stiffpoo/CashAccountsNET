@@ -1,5 +1,4 @@
 ﻿using BitcoinNet;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,22 +26,6 @@ namespace CashAccountsNET
         private AccountRegistration()
         {
 
-        }
-
-        public string ToJson()
-        {
-            var addresses = new string[this.PaymentData.Count];
-            for (int i = 0; i < addresses.Length; i++)
-            {
-                addresses[i] = this.PaymentData.ElementAt(i).Address;
-            }
-
-            var jsonObject = new JObject()
-            {
-                new JProperty("name", this.Name),
-                new JProperty("payments", new JArray(addresses))
-            };
-            return jsonObject.ToString();
         }
 
         public static AccountRegistration Create(string accountName, IEnumerable<PaymentData> paymentData)

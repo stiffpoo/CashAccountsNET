@@ -78,7 +78,20 @@ namespace CashAccountsNET.Client
                 throw new ArgumentException("Account Registration is not complete, no account name present", "registration");
 
             var request = new RestRequest("register/", Method.POST);
-            request.AddJsonBody(registration.ToJson());
+
+            var addresses = new string[registration.PaymentData.Count];
+            for (int i = 0; i < addresses.Length; i++)
+            {
+                addresses[i] = registration.PaymentData.ElementAt(i).Address;
+            }
+
+            var registrationRequest = new JObject()
+            {
+                new JProperty("name", registration.Name),
+                new JProperty("payments", new JArray(addresses))
+            };
+
+            request.AddJsonBody(registrationRequest.ToString());
 
             var response = this.RestClient.Execute(request);
             var jResponse = JObject.Parse(response.Content);
@@ -107,7 +120,20 @@ namespace CashAccountsNET.Client
                 throw new ArgumentException("Account Registration is not complete, no account name present", "registration");
 
             var request = new RestRequest("register/", Method.POST);
-            request.AddJsonBody(registration.ToJson());
+
+            var addresses = new string[registration.PaymentData.Count];
+            for (int i = 0; i < addresses.Length; i++)
+            {
+                addresses[i] = registration.PaymentData.ElementAt(i).Address;
+            }
+
+            var registrationRequest = new JObject()
+            {
+                new JProperty("name", registration.Name),
+                new JProperty("payments", new JArray(addresses))
+            };
+
+            request.AddJsonBody(registrationRequest.ToString());
 
             var response = await this.RestClient.ExecuteTaskAsync(request);
             var jResponse = JObject.Parse(response.Content);
