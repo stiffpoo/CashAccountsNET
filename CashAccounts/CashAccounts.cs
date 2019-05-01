@@ -181,7 +181,7 @@ namespace CashAccountsNET
         #endregion
 
         #region CashAccounts Specific Methods
-        internal static List<PaymentData> ProcessPaymentData(Transaction tx)
+        internal static PaymentData[] ProcessPaymentData(Transaction tx)
         {
             List<byte[]> rawPaymentDataList = new List<byte[]>();
             foreach (var output in tx.Outputs)
@@ -295,7 +295,7 @@ namespace CashAccountsNET
             paymentDataTmpList.Where(p => p.Type == PaymentType.SlpKeyHash).ToList().ForEach(p => paymentDataList.Add(p));
             paymentDataTmpList.Where(p => p.Type == PaymentType.SlpScriptHash).ToList().ForEach(p => paymentDataList.Add(p));
 
-            return paymentDataList;
+            return paymentDataList.ToArray();
         }
 
         internal static Script GetRegistrationScript(string accountName, IEnumerable<PaymentData> paymentData)

@@ -52,7 +52,7 @@ namespace CashAccountsNET
                 return _emoji;
             }
         }
-        public List<PaymentData> PaymentData { get; private set; }
+        public PaymentData[] PaymentData { get; private set; }
         public string Txid { get; private set; }
         public string RawTxHex { get; private set; }
         private int _blockHeight;
