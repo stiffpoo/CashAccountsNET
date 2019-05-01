@@ -22,3 +22,10 @@ Providing:
 ###### Dependencies
 - [CashAccounts](https://github.com/stiffpoo/CashAccountsNET/tree/master/CashAccounts)
 - [Newtonsoft.Json](https://github.com/JamesNK/Newtonsoft.Json) (High-performance JSON library)
+
+## License
+
+This library is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+
+[License-URL]: http://opensource.org/licenses/MIT
+[License-Image]: https://img.shields.io/github/license/mashape/apistatus.svg
