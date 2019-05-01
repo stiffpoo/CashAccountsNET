@@ -242,7 +242,7 @@ namespace CashAccountsNET.Client
 
         private string AccountRegistrationToJson(AccountRegistration registration)
         {
-            var addresses = new string[registration.PaymentData.Count];
+            var addresses = new string[registration.PaymentData.Length];
             for (int i = 0; i < addresses.Length; i++)
             {
                 addresses[i] = registration.PaymentData.ElementAt(i).Address;

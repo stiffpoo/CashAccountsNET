@@ -445,4 +445,16 @@ namespace CashAccountsNET
         }
         #endregion
     }
+
+    public enum PaymentType : byte
+    {
+        KeyHash = 0x01,
+        ScriptHash = 0x02,
+        PaymentCode = 0x03,
+        StealthKey = 0x04,
+        SlpKeyHash = 0x81,
+        SlpScriptHash = 0x82,
+        SlpPaymentCode = 0x83,
+        SlpStealthKey = 0x84
+    }
 }
