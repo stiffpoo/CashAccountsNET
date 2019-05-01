@@ -13,7 +13,7 @@
 Using statements:
 ```c#
 using CashAccountsNET;
-using CashAcountsNET.Client;
+using CashAccountsNET.Client;
 ```
 Retrieving Payment Data for zzasdfcollision#406.71;
 ```c#
