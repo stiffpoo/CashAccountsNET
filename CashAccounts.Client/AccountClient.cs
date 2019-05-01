@@ -12,27 +12,46 @@ namespace CashAccountsNET.Client
     public class AccountClient
     {
         public Uri ApiServer { get; set; }
-        public HttpClient HttpClient { get; private set; }
+        public Uri LookupServer { get; set; }
+        public HttpClient HttpClient { get; private set; } = new HttpClient();
 
         public static readonly string[] API_SERVERS =
-            { "http://api.cashaccount.info:8585/", "https://calus.stiffp.ooo/api/", "https://cashacct.imaginary.cash/" };
+            { "http://api.cashaccount.info:8585/", "https://cashacct.imaginary.cash/" };
 
-        public AccountClient(Uri apiServer = null)
+        public static readonly string[] LOOKUP_SERVERS = API_SERVERS.Concat(new string[] 
+            { "https://calus.stiffp.ooo/api/", "http://89.163.204.53:8585/" }).ToArray();
+
+        public AccountClient(Uri lookupServer = null, Uri apiServer = null)
         {
-            if (apiServer == null)
+            if (apiServer == null && lookupServer == null)
             {
                 Random random = new Random();
                 int r = random.Next(0, API_SERVERS.Length - 1);
                 this.ApiServer = new Uri(API_SERVERS[r]);
+                this.LookupServer = this.ApiServer;
             }
-            else
+            else if (apiServer == null && lookupServer != null)
+            {
+                Random random = new Random();
+                int r = random.Next(0, API_SERVERS.Length - 1);
+                this.ApiServer = new Uri(API_SERVERS[r]);
+                this.LookupServer = lookupServer;
+            }
+            else if (apiServer != null && lookupServer == null)
+            {
                 this.ApiServer = apiServer;
-            this.HttpClient = new HttpClient();
+                this.LookupServer = this.ApiServer;
+            }
+            else
+            {
+                this.ApiServer = apiServer;
+                this.LookupServer = lookupServer;
+            }
         }
 
-        public LookupResponse[] GetLookupResponses(string name, int number)
+        public LookupResponse[] AccountLookup(string name, int number)
         {
-            var requestUri = new Uri(this.ApiServer + string.Format("lookup/{0}/{1}", number, name));
+            var requestUri = new Uri(this.LookupServer + string.Format("lookup/{0}/{1}", number, name));
 
             var httpResponse = this.HttpClient.GetAsync(requestUri).Result;
             var jsonResponse = httpResponse.Content.ReadAsStringAsync().Result;
@@ -48,9 +67,9 @@ namespace CashAccountsNET.Client
             }
         }
 
-        public async Task<LookupResponse[]> GetLookupResponsesAsync(string name, int number)
+        public async Task<LookupResponse[]> AccountLookupAsync(string name, int number)
         {
-            var requestUri = new Uri(this.ApiServer + string.Format("lookup/{0}/{1}", number, name));
+            var requestUri = new Uri(this.LookupServer + string.Format("lookup/{0}/{1}", number, name));
 
             var httpResponse = await this.HttpClient.GetAsync(requestUri);
             var jsonResponse = await httpResponse.Content.ReadAsStringAsync();
@@ -66,7 +85,7 @@ namespace CashAccountsNET.Client
             }
         }
 
-        public AccountMetadata GetAccountMetadata(string name, int number, string hash = "")
+        public AccountMetadata GetMetadata(string name, int number, string hash = "")
         {
             var requestUri = new Uri(this.ApiServer + string.Format("account/{0}/{1}/{2}", number, name, hash));
 
@@ -84,7 +103,7 @@ namespace CashAccountsNET.Client
             }
         }
 
-        public async Task<AccountMetadata> GetAccountMetadataAsync(string name, int number, string hash = "")
+        public async Task<AccountMetadata> GetMetadataAsync(string name, int number, string hash = "")
         {
             var requestUri = new Uri(this.ApiServer + string.Format("account/{0}/{1}/{2}", number, name, hash));
 
@@ -102,7 +121,7 @@ namespace CashAccountsNET.Client
             }
         }
 
-        public RegistrationResponse PostAccountRegistration(AccountRegistration registration)
+        public RegistrationResponse PostRegistration(AccountRegistration registration)
         {
             if (!registration.PaymentData.Any())
                 throw new ArgumentException("Account Registration is not complete, no payment data present", "registration");
@@ -128,7 +147,7 @@ namespace CashAccountsNET.Client
             }
         }
 
-        public async Task<RegistrationResponse> PostAccountRegistrationAsync(AccountRegistration registration)
+        public async Task<RegistrationResponse> PostRegistrationAsync(AccountRegistration registration)
         {
             if (!registration.PaymentData.Any())
                 throw new ArgumentException("Account Registration is not complete, no payment data present", "registration");
@@ -169,8 +188,8 @@ namespace CashAccountsNET.Client
             {
                 lookups[i] = new LookupResponse
                 {
-                    RawTransactionString = ((string)jLookups[i]["transaction"]).ToLower(),
-                    InclusionProofString = ((string)jLookups[i]["inclusion_proof"]).ToLower()
+                    RawTxHex = ((string)jLookups[i]["transaction"]).ToLower(),
+                    InclusionProof = ((string)jLookups[i]["inclusion_proof"]).ToLower()
                 };
             }
             return lookups;

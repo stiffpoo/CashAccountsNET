@@ -6,8 +6,8 @@ namespace CashAccountsNET.Client.Models
 {
     public class LookupResponse
     {
-        public string RawTransactionString { get; internal set; }
-        public string InclusionProofString { get; internal set; }
+        public string RawTxHex { get; internal set; }
+        public string InclusionProof { get; internal set; }
 
         internal LookupResponse()
         {
