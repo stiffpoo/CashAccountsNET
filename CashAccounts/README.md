@@ -29,20 +29,19 @@ var account = Account.Parse(rawTxHex, inclusionProof, blockHeight, BlockHash);
 Console.WriteLine(account.Name); // Jonathan
 Console.WriteLine(account.CollisionId); // 5876958390
 Console.WriteLine(account.Emoji); // ☯
-Console.WriteLine(account.PaymentData.First().Address); // bitcoincash:qr4aadjrpu73d2wxwkxkcrt6gqxgu6a7usxfm96fst
+Console.WriteLine(account.PaymentData[0].Address); // bitcoincash:qr4aadjrpu73d2wxwkxkcrt6gqxgu6a7usxfm96fst
 ```
 Creating a new Account Registration:
 ```c#
-using BitcoinNet; // To make sense of the OutputScript class property
-
 string name = "Timothy";
 var payment = new PaymentData[]
 {
     new PaymentData("bitcoincash:qzj8jyvyqvhvr0gxhy7uhqcnyc99mv77asxn9sekqu"),
-    new PaymentData("simpleledger:qqra6zy6c2k3x86whvpcr4we4e8xlnayhcajhv0nch")
+    new PaymentData("simpleledger:qqra6zy6c2k3x86whvpcr4we4e8xlnayhcajhv0nch"),
+    new PaymentData("PM8TJa84G8yD81hRCF7kWoDcXDEgSdYNXWWe26HRGzwszeC1uc7JwUyZkqkTSQ2sjRXPEqVAST9aN4wrmXfvf59vzsDxCHbVuwB1oe5gKnR2nfkVvhcc");
 }
 
 var registration = AccountRegistration.Create(name, payment);
 
-Console.WriteLine(registration.OutputScript) // OP_RETURN 01010101 54696d6f746879 01a4791184032ec1bd06b93dcb8313260a5db3deec 8107dd089ac2ad131f4ebb0381d5d9ae4e6fcfa4be
+Console.WriteLine(registration.OutputScript) // OP_RETURN 01010101 54696d6f746879 0301000345765a84a03c288708eb35e53e4cecfd0f113db8968235a4c3887f97dbceada0e20064dab0909bcad5ecd7388cddf3ae0cc57fa57135418230974002f9504d1e00000000000000000000000000 01a4791184032ec1bd06b93dcb8313260a5db3deec 8107dd089ac2ad131f4ebb0381d5d9ae4e6fcfa4be
 ```
